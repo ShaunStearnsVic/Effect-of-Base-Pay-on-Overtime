@@ -1,0 +1,247 @@
+---
+title: "Effect of Base Salary on Overtime"
+author: "Shaun Stearns"
+date: "8/21/2019"
+output: word_document
+---
+
+#Load Necessary Libraries
+```{r}
+library(psych)
+library(QuantPsyc)
+library(mixlm)
+library(ez)
+library(readr)
+library(dplyr)
+library(stats)
+library(DescTools)
+library(ggplot2)
+library(ggthemes)
+library(extrafont)
+library(jtools)
+```
+
+
+#Set directory
+```{r}
+setwd("Desktop/CSU Global Data Analytics/MIS500/Portfolio Project") 
+```
+
+
+#Load file and replace 0 with NA
+```{r}
+NYC_Fisc_Clean <- read_csv("NYC_Fisc_Clean.csv", 
+                           col_types = cols(`Base Salary` = col_number(), 
+                                            `OT Hours` = col_number(), `Regular Gross Paid` = col_number(), 
+                                            `Regular Hours` = col_number(), `Total OT Paid` = col_number(), 
+                                            `Total Other Pay` = col_number()),
+                                              na="0")
+```
+
+#Check File
+###View(NYC_Fisc_Clean)
+###Descriptives for Borough and Over Time Hours. Determine Boroughs with the highest sample.
+```{r}
+describeBy(NYC_Fisc_Clean$`OT Hours`, NYC_Fisc_Clean$`Work Location Borough`)
+```
+
+
+#Remove Rows with NA Values for Over Time Hours, Base Salary, and Total Other Pay
+```{r}
+NYC_Fisc_Clean<-NYC_Fisc_Clean[complete.cases(NYC_Fisc_Clean$`OT Hours`),]
+NYC_Fisc_Clean<-NYC_Fisc_Clean[complete.cases(NYC_Fisc_Clean$`Base Salary`),]
+NYC_Fisc_Clean<-NYC_Fisc_Clean[complete.cases(NYC_Fisc_Clean$`Total Other Pay`),]
+```
+
+#Split file based on Borough Location
+```{r}
+NYC_Split <- split(NYC_Fisc_Clean, NYC_Fisc_Clean$`Work Location Borough`)
+```
+
+#Create datasets based on Borough location with the largest sample sizes
+```{r}
+BRONX<-NYC_Split[[2]]
+BROOKLYN<-NYC_Split[[3]]
+MANHATTAN<-NYC_Split[[7]]
+QUEENS<-NYC_Split[[11]]
+RICHMOND<-NYC_Split[[12]]
+WESTCHESTER<-NYC_Split[[16]]
+```
+
+
+```{r}
+#Combine Split files into a single file with chosen Boroughs
+BigBoroughs <- rbind(BRONX, BROOKLYN, MANHATTAN, QUEENS, RICHMOND, WESTCHESTER)
+#Overtime Hours
+describeBy(BigBoroughs$`OT Hours`, BigBoroughs$`Work Location Borough`)
+#Base Salary
+describeBy(BigBoroughs$`Base Salary`, BigBoroughs$`Work Location Borough`)
+#Total Other Pay
+describeBy(BigBoroughs$`Total Other Pay`, BigBoroughs$`Work Location Borough`)
+```
+
+#Create Non-transformed dataset for visualizations
+```{r}
+BigBoroughs2 <- BigBoroughs
+#View(BigBuoroughs2)
+```
+
+
+#Log Transform to normalize data
+```{r}
+BigBoroughs$`OT Hours` = log10(BigBoroughs$`OT Hours`)
+BigBoroughs$`Base Salary` = log10(BigBoroughs$`Base Salary`)
+BigBoroughs$`Total Other Pay` = log10(BigBoroughs$`Total Other Pay`)
+View(BigBoroughs)
+```
+
+
+#Analysis of Variance with Unadjusted and adjusted post hoc tests
+```{r}
+anova1 <- aov(BigBoroughs$`OT Hours` ~ BigBoroughs$`Work Location Borough`)
+summary(anova1, digits = 4)
+#Post hoc unadjusted: Similar to a t-test but takes into account overall error
+Post<-TukeyHSD(anova1)
+Post
+#Scheffe Post Hoc: Statistical adjustment based on multiple comparisons
+PostSchf <- ScheffeTest(anova1, conf.level=NA)
+PostSchf
+```
+
+```{r}
+anova2 <- aov(BigBoroughs$`Base Salary` ~ BigBoroughs$`Work Location Borough`)
+summary(anova2)
+#Post hoc unadjusted: Similar to a t-test but takes into account overall error
+Post<-TukeyHSD(anova2)
+Post
+#Scheffe Post Hoc: Statistical adjustment based on multiple comparisons
+PostSchf <- ScheffeTest(anova2, conf.level=NA)
+PostSchf
+```
+
+```{r}
+anova3 <- aov(BigBoroughs$`Total Other Pay` ~ BigBoroughs$`Work Location Borough`)
+summary(anova3)
+#Post hoc unadjusted: Similar to a t-test but takes into account overall error
+Post<-TukeyHSD(anova3)
+Post
+#Scheffe Post Hoc: Statistical adjustment based on multiple comparisons
+PostSchf <- ScheffeTest(anova3, conf.level=NA)
+PostSchf
+```
+
+
+#Multiple regression on split files to determine what variables predict increased overtime
+```{r}
+#BRONX
+BRONXlm<-lm(BRONX$`OT Hours` ~ BRONX$`Base Salary`)
+BRONXmlm<-lm(BRONX$`OT Hours` ~ BRONX$`Base Salary` +
+               BRONX$`Total Other Pay`, data = BRONX)
+summ(BRONXlm, digits = 4)
+lm.beta(BRONXlm)
+summ(BRONXmlm, digits = 4)
+lm.beta(BRONXmlm)
+```
+
+```{r}
+#BROOKLYN
+BROOKLYNlm<-lm(BROOKLYN$`OT Hours` ~ BROOKLYN$`Base Salary`)
+BROOKLYNmlm<-lm(BROOKLYN$`OT Hours` ~ BROOKLYN$`Base Salary` +
+                  BROOKLYN$`Total Other Pay`, data = BROOKLYN)
+summ(BROOKLYNlm, digits = 4)
+lm.beta(BROOKLYNlm)
+summ(BROOKLYNmlm, digits = 4)
+lm.beta(BROOKLYNmlm)
+```
+
+```{r}
+#MANHATTAN
+MANHATTANlm<-lm(MANHATTAN$`OT Hours` ~ MANHATTAN$`Base Salary`)
+MANHATTANmlm<-lm(MANHATTAN$`OT Hours` ~ MANHATTAN$`Base Salary` +
+                  MANHATTAN$`Total Other Pay`, data = MANHATTAN)
+summ(MANHATTANlm, digits = 4)
+lm.beta(MANHATTANlm)
+summ(MANHATTANmlm, digits = 4)
+lm.beta(MANHATTANmlm)
+```
+
+```{r}
+#QUEENS
+QUEENSlm<-lm(QUEENS$`OT Hours` ~ QUEENS$`Base Salary`)
+QUEENSmlm<-lm(QUEENS$`OT Hours` ~ QUEENS$`Base Salary` +
+                   QUEENS$`Total Other Pay`, data = QUEENS)
+summ(QUEENSlm, digits = 4)
+lm.beta(QUEENSlm)
+summ(QUEENSmlm, digits = 4)
+lm.beta(QUEENSmlm)
+```
+
+```{r}
+#RICHMOND
+RICHMONDlm<-lm(RICHMOND$`OT Hours` ~ RICHMOND$`Base Salary`)
+RICHMONDmlm<-lm(RICHMOND$`OT Hours` ~ RICHMOND$`Base Salary` +
+                RICHMOND$`Total Other Pay`, data = RICHMOND)
+summ(RICHMONDlm, digits = 4)
+lm.beta(RICHMONDlm)
+summ(RICHMONDmlm, digits = 4)
+lm.beta(RICHMONDmlm)
+```
+
+```{r}
+#WESTCHESTER
+WESTCHESTERlm<-lm(WESTCHESTER$`OT Hours` ~ WESTCHESTER$`Base Salary`)
+WESTCHESTERmlm<-lm(WESTCHESTER$`OT Hours` ~ WESTCHESTER$`Base Salary` +
+                  WESTCHESTER$`Total Other Pay`, data = WESTCHESTER)
+summ(WESTCHESTERlm, digits = 4)
+lm.beta(WESTCHESTERlm)
+summ(WESTCHESTERmlm,digits = 4)
+lm.beta(WESTCHESTERmlm)
+```
+
+
+#Plots: Bar Chart (Overtime by Boroughs)
+```{r}
+A <- ggplot(data=BigBoroughs2, aes(x=reorder(BigBoroughs2$`Work Location Borough`, BigBoroughs2$`OT Hours`),
+                             y=BigBoroughs2$`OT Hours`, fill=`Work Location Borough`)) +
+  geom_bar(stat="summary", fun.y = "mean") + 
+  xlab("NYC Borough") + 
+  ylab("Hours of Overtime") +
+  coord_cartesian(ylim = c(100, 300)) +
+  ggtitle("NYC Employee Overtime by Borough")
+A + scale_y_continuous(labels = scales::comma) + 
+  theme(axis.text.x =
+            element_text(size  = 10, angle = 45, hjust = 1, vjust = 1)) +
+  guides(fill=guide_legend(title=NULL))
+```
+
+
+#Plots: Bar Chart (Basesalary by Borough)
+```{r}
+B <- ggplot(data=BigBoroughs2, aes(x=reorder(BigBoroughs2$`Work Location Borough`, BigBoroughs2$`Base Salary`), 
+                             y=BigBoroughs2$`Base Salary`, fill=`Work Location Borough`)) +
+  geom_bar(stat="summary", fun.y = "mean", aes(fill=`Work Location Borough`)) +
+  xlab("NYC Borough") + 
+  ylab("Base Salary") + 
+  coord_cartesian(ylim = c(55000, 62000)) +
+  ggtitle("NYC Employee Base Salary by Borough")
+B + scale_y_continuous(labels = scales::comma) +
+  theme(axis.text.x =
+            element_text(size  = 10, angle = 45, hjust = 1, vjust = 1)) +
+  guides(fill=guide_legend(title=NULL))
+```
+
+
+#Plots: Bar Chart (Other Pay by Borough)
+```{r}
+C <- ggplot(data=BigBoroughs2, aes(x=reorder(BigBoroughs2$`Work Location Borough`, BigBoroughs2$`Total Other Pay`), 
+                             y=BigBoroughs2$`Total Other Pay`, fill=`Work Location Borough`)) +
+  geom_bar(stat="summary", fun.y = "mean", aes(fill=`Work Location Borough`)) +
+  xlab("NYC Borough") + 
+  ylab("Total Other Pay") + 
+  coord_cartesian(ylim = c(4000, 8300)) +
+  ggtitle("NYC Employee Total Other Pay by Borough")
+C + scale_y_continuous(labels = scales::comma) + 
+  theme(axis.text.x =
+            element_text(size  = 10, angle = 45, hjust = 1, vjust = 1)) +
+  guides(fill=guide_legend(title=NULL))
+```
